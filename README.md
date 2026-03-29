@@ -1,5 +1,7 @@
 # API Mock UI
 
+![Deploy to GitHub Pages](https://github.com/ItkalNagaratna/api-mock-ui/actions/workflows/deploy.yml/badge.svg)
+
 A modern, intuitive tool to transform JSON data into usable code artifacts for your development workflow. Instantly generate TypeScript interfaces, Zod schemas, and MSW handlers from any JSON structure.
 
 ![Hero Image](./src/assets/screenshot.png)
