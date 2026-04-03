@@ -1,5 +1,5 @@
 {
-  "name": "api-mock-ui",
+  "name": "api-mock",
   "description": "A modern tool to transform JSON into TypeScript interfaces, Zod schemas, and MSW handlers.",
   "private": true,
   "version": "0.0.0",
