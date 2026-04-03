@@ -1,11 +1,13 @@
-import { Shuffle } from 'lucide-react';
+import { Shuffle, Sparkles, Key, Braces } from 'lucide-react';
 
 interface HeaderProps {
   onRandomize: () => void;
+  onAiConfigClick: () => void;
   hasData: boolean;
+  hasApiKey: boolean;
 }
 
-export function Header({ onRandomize, hasData }: HeaderProps) {
+export function Header({ onRandomize, onAiConfigClick, hasData, hasApiKey }: HeaderProps) {
   return (
     <header
       className="flex items-center justify-between px-6 py-3 shrink-0 select-none border-b"
@@ -28,7 +30,10 @@ export function Header({ onRandomize, hasData }: HeaderProps) {
             boxShadow: '0 0 18px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.08)',
           }}
         >
-          <img src="/favicon.svg" alt="API Mock UI Logo" className="w-5 h-5 object-contain" style={{ filter: 'drop-shadow(0 0 6px rgba(99,102,241,0.9))' }} />
+          <div className="relative">
+            <div className="absolute inset-0 bg-indigo-500/20 blur-lg rounded-full" />
+            <Braces className="w-5 h-5 text-indigo-400 relative z-10" style={{ filter: 'drop-shadow(0 0 8px rgba(129,140,248,0.6))' }} />
+          </div>
         </div>
 
         <div className="flex flex-col">
@@ -55,6 +60,7 @@ export function Header({ onRandomize, hasData }: HeaderProps) {
             border: '1px solid rgba(99,102,241,0.4)',
             color: '#a5b4fc',
             boxShadow: '0 0 12px rgba(99,102,241,0.15)',
+            cursor: 'pointer',
           } : {
             background: 'rgba(24,24,27,0.5)',
             border: '1px solid rgba(63,63,70,0.5)',
@@ -65,6 +71,28 @@ export function Header({ onRandomize, hasData }: HeaderProps) {
         >
           <Shuffle className="w-4 h-4" />
           <span>Randomize Data</span>
+        </button>
+
+        <button
+          onClick={onAiConfigClick}
+          className="flex items-center space-x-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 outline-none focus:ring-2 focus:ring-indigo-500"
+          style={hasApiKey ? {
+            background: 'rgba(39, 39, 42, 0.5)',
+            border: '1px solid rgba(63, 63, 70, 0.8)',
+            color: '#a1a1aa',
+            boxShadow: 'none',
+            cursor: 'pointer',
+          } : {
+            background: 'linear-gradient(135deg, rgba(168,85,247,0.2) 0%, rgba(217,70,239,0.15) 100%)',
+            border: '1px solid rgba(168,85,247,0.4)',
+            color: '#d8b4fe',
+            boxShadow: '0 0 12px rgba(168,85,247,0.15)',
+            cursor: 'pointer',
+          }}
+          title={hasApiKey ? "AI is configured and ready" : "Configure AI"}
+        >
+          {hasApiKey ? <Sparkles className="w-4 h-4" /> : <Key className="w-4 h-4" />}
+          <span>{hasApiKey ? "AI Ready" : "Configure AI"}</span>
         </button>
       </div>
     </header>

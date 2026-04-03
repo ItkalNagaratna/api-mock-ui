@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { Header } from './components/Header';
 import { JsonEditor } from './components/JsonEditor';
@@ -8,7 +8,9 @@ import { AnimatedBackground } from './components/AnimatedBackground';
 import { useDebounce } from './hooks/useDebounce';
 import { generateTypeScript, generateZodSchema, generateMswHandler, type JsonValue } from './utils/typeGenerator';
 import { randomizeData } from './utils/mockGenerator';
-import { Settings } from 'lucide-react';
+import { Settings, Loader2, ArrowUp, Sparkles } from 'lucide-react';
+import { AIGeneratorModal } from './components/AIGeneratorModal';
+import { generateJsonData } from './utils/aiGenerator';
 
 const DEFAULT_JSON = `{\n  "id": 1,\n  "name": "Jane Doe",\n  "isActive": true,\n  "tags": ["developer", "react"],\n  "profile": {\n    "github": "@janedoe",\n    "repoCount": 42\n  }\n}`;
 
@@ -20,6 +22,30 @@ function App() {
     endpoint: '/api/endpoint'
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const aiInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setHasApiKey(!!localStorage.getItem('gemini_api_key'));
+  }, [showAiModal]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Focus on '/' if not inside an input
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        aiInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Debounce the input for smoother typing experience
   const debouncedJsonInput = useDebounce(jsonInput, 300);
@@ -69,15 +95,45 @@ function App() {
     }
   };
 
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+
+    const apiKey = localStorage.getItem('gemini_api_key');
+    if (!apiKey) {
+      setShowAiModal(true);
+      return;
+    }
+
+    setIsAiGenerating(true);
+    setAiError(null);
+
+    try {
+      const jsonStr = await generateJsonData(apiKey, aiPrompt);
+      JSON.parse(jsonStr); // Ensure validity before setting
+      setJsonInput(jsonStr);
+      setAiPrompt('');
+    } catch (err: any) {
+      console.error(err);
+      setAiError(err?.message || 'Failed to generate JSON. Check your API key and prompt.');
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen text-zinc-100 font-sans overflow-hidden relative" style={{ background: 'transparent' }}>
       <AnimatedBackground />
-      <Header onRandomize={handleRandomize} hasData={!!parsedData} />
+      <Header onRandomize={handleRandomize} onAiConfigClick={() => setShowAiModal(true)} hasData={!!parsedData} hasApiKey={hasApiKey} />
+
+      <AIGeneratorModal
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+      />
 
       <main className="flex-1 overflow-hidden relative" style={{ zIndex: 1 }}>
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className="absolute bottom-6 right-6 z-50 p-3 rounded-full bg-indigo-600 hover:bg-indigo-500 shadow-lg transition-all active:scale-95"
+          className="absolute bottom-6 right-6 z-50 p-3 rounded-full bg-indigo-600 hover:bg-indigo-500 shadow-lg transition-all active:scale-95 cursor-pointer"
           title="Generator Settings"
         >
           <Settings className="w-5 h-5 text-white" />
@@ -146,6 +202,51 @@ function App() {
             />
           </Panel>
         </PanelGroup>
+
+        {/* Floating AI Command Bar */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center w-full max-w-[500px] px-4 pointer-events-none">
+          {aiError && (
+            <div className="mb-3 bg-red-500/10 border border-red-500/20 text-red-500 text-xs px-4 py-3 rounded-xl flex items-center space-x-2 shadow-xl backdrop-blur-md pointer-events-auto w-fit max-w-full">
+              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-red-500/20 text-red-500 shrink-0 text-[10px] font-bold">!</span>
+              <span className="truncate">{aiError}</span>
+            </div>
+          )}
+
+          <div className="relative w-full shadow-[0_0_40px_-5px_rgba(0,0,0,0.8)] pointer-events-auto rounded-[20px]">
+            <input
+              ref={aiInputRef}
+              type="text"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAiGenerate();
+              }}
+              disabled={isAiGenerating}
+              placeholder="Generate a new response... (Press '/')"
+              className="w-full bg-[#09090b]/95 backdrop-blur-xl border border-zinc-800/80 rounded-[20px] pl-14 pr-12 py-[14px] text-[13px] text-zinc-100 placeholder:text-zinc-500 focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all disabled:opacity-50"
+            />
+            {/* Logo at the front */}
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
+              {isAiGenerating ? (
+                <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+              ) : (
+                <div className="flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-indigo-500/80" style={{ filter: 'drop-shadow(0 0 4px rgba(129,140,248,0.3))' }} />
+                </div>
+              )}
+            </div>
+            {aiPrompt.trim().length > 0 && !isAiGenerating && (
+              <div className="absolute inset-y-0 right-2 flex items-center animate-in fade-in zoom-in-95 duration-200 z-10">
+                <button
+                  onClick={handleAiGenerate}
+                  className="w-8 h-8 flex items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+                >
+                  <ArrowUp className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );
